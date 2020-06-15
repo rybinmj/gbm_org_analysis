@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 from statistics import mean
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+import statsmodels.api as sm
 
 
 class GbmInvasion2():
@@ -307,15 +308,15 @@ class GbmInvasion2():
         deep = sns.color_palette("deep").as_hex()
 
         self.group_colors = [
-            pastel[7],
-            colorblind[7],
-            muted[4],
-            muted[3],
-            dark[3],
-            muted[0],
-            dark[0],
-            muted[2],
-            dark[2],
+            pastel[7],  # day1-none
+            colorblind[7],  # DMSO
+            muted[4],  # TAS120
+            muted[3],  # JQ1
+            dark[3],  # JQ1 + TAS120
+            muted[0],  # MK8628
+            dark[0],  # MK8628 + TAS120
+            muted[2],  # UM002
+            dark[2],  # UM002 + TAS120
         ]
 
         self.batch_groups = []
@@ -337,6 +338,11 @@ class GbmInvasion2():
                     if org[:-5] == group_id:
                         org_colors.append(color)
             self.batch_colors.append(org_colors)
+
+        #############################
+        # === Linear Regression === #
+        #############################
+
     ###################
     # === Functions ===
     ###################
@@ -688,3 +694,42 @@ class GbmInvasion2():
         """Saves figure as .pdf file"""
         pth = path + "/" + figname + ".pdf"
         fig.get_figure().savefig(pth)
+
+    def lin_reg(self, gs_numbercomb_tidy, cnscomb_tidy):
+        """Returns linear regression analysis. Batch is int 1, 2, 3, or 4."""
+        ng = gs_numbercomb_tidy["Num_Greater_Than"]
+        nt = cnscomb_tidy["Cell_Number"]
+
+        model = sm.OLS(ng, nt).fit()
+        # predictions = model.predict(nt)
+        return model.summary()
+
+    def lin_reg_plot(self, gs_numbercomb_tidy, cnscomb_tidy, colors, save=None):
+        """Plots linear regression"""
+
+        comb_tidy = cnscomb_tidy.copy()
+        comb_tidy["Num_Greater"] = gs_numbercomb_tidy["Num_Greater_Than"]
+
+        fig_style = {
+            "figure.facecolor": "w",
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+        }
+
+        plt.figure(figsize=[6,6])
+
+        plot = sns.regplot(
+            x="Cell_Number",
+            y="Num_Greater",
+            data=comb_tidy,
+            truncate=False,
+            scatter_kws = {'color': colors,'s': 75, 'edgecolor': "black"},
+            line_kws = {'color': 'black'}
+        )
+
+        sns.despine()
+        plt.tight_layout()
+        plt.show()
+
+        if save is not None:
+            self.figtofile(plot, save[0], save[1])
