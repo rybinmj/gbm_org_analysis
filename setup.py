@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="org_gbm_analysis",
+    name="gbm_org_analysis",
     version="0.0.1",
     author="Matt Rybin",
     author_email="mxr2011@miami.edu",
