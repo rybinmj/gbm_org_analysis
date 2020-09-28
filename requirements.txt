@@ -1,7 +1,7 @@
 pandas
-numpy
-seaborn
-matplotlib
-scipy
+glob
 statistics
+matplotlib
+seaborn
+scipy
 statsmodels
