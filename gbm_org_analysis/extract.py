@@ -2,9 +2,8 @@ import pandas as pd
 import glob
 import os
 from statistics import mean
-import stats
-import figs
 import matplotlib.pyplot as plt
+from gbm_org_analysis import stats, figs
 
 
 def match_files_with_org_id(path, separator, groups_dict):
