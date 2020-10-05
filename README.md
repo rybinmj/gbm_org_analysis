@@ -31,7 +31,7 @@ $ pip install gbm_org_analysis
 4. Run analysis
 
     ```zsh
-    $ python3 Analysis/test_analysis.py
+    $ python3 test_analysis.py
     ```
 
 Notes:
@@ -42,10 +42,10 @@ Notes:
 Compiled code:
 
 ```zsh
-$ curl -L https://miami.box.com/shared/static/uzm30l05xwjhx2v9qeie9ruc12siz00f.zip --output Gbm_TestData.zip
-$ unzip Gbm_TestData.zip
-$ cd Gbm_TestData
-$ pip install -r requirements.txt
-$ python3 Analysis/test_analysis.py
+curl -L https://miami.box.com/shared/static/uzm30l05xwjhx2v9qeie9ruc12siz00f.zip --output Gbm_TestData.zip
+unzip Gbm_TestData.zip
+cd Gbm_TestData
+pip install -r requirements.txt
+python3 test_analysis.py
 ```
 
