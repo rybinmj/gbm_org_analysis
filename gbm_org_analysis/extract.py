@@ -12,7 +12,8 @@ def match_files_with_org_id(path, separator, groups_dict):
     name_pairs = []
     for fullname in glob.glob(path):
         name_pair = (fullname, fullname.split(separator))
-        name_pairs.append(name_pair)
+        if any(portion_of_filename in name_pair[1] for portion_of_filename in list(groups_dict.keys())):
+            name_pairs.append(name_pair)
 
     files_with_org_ids = {}
     for name_pair in name_pairs:
