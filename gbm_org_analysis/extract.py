@@ -37,15 +37,19 @@ def match_files_with_org_id(path, separator, groups_dict):
 
 def comb_df_by_group(df, group_names):
     """Combines columns of a given df whose names start with strings in group_names"""
-    df_comb = pd.DataFrame()
+    all_dict = {}
     for group in group_names:
         keep_cols = [col for col in df if col.startswith(group)]
         combined_values = []
         for col in keep_cols:
             combined_values.append(df[col].values.tolist())
-        comb_list = [
+        collapsed_list = [
             item for sublist in combined_values for item in sublist]
-        df_comb[group] = comb_list
+        if group not in all_dict:
+            all_dict[group] = collapsed_list
+
+    df_comb = pd.DataFrame(
+        dict([(k, pd.Series(v))for k, v in all_dict.items()]))
 
     return df_comb
 
