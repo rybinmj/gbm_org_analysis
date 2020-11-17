@@ -19,9 +19,15 @@ def save_to_txt(filename, text):
 def anova(df):
     """Performs anova and tukey hsd post hoc on columns of df"""
 
-    df_tidy = pd.melt(df).dropna()
+    values_list = df.values.tolist()
+    values_list_without_nan = []
+    for values in values_list:
+        values_list_without_nan.append(
+            [value for value in values if str(value) != 'nan'])
 
-    fvalue, pvalue = stats.f_oneway(*df.to_numpy())
+    fvalue, pvalue = stats.f_oneway(*values_list_without_nan)
+
+    df_tidy = pd.melt(df).dropna()
     tky = pairwise_tukeyhsd(
         endog=df_tidy[df_tidy.columns[1]],
         groups=df_tidy[df_tidy.columns[0]],
