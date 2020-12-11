@@ -630,7 +630,7 @@ class OrganoidData():
             # Removing smaller objects which may have been
             # captured during Imaris rendering.
             if len(data) > 1:
-                data = [max(data)]
+                data = pd.DataFrame(data.max()).transpose()
 
             df[org_id] = data[org_id]
 
