@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="gbm_org_analysis",
-    version="0.0.13",
+    version="1.0.0",
     author="Matt Rybin",
     author_email="mxr2011@miami.edu",
     description="Extracts and analyzes GBM-organoid data exported from Imaris",
@@ -13,6 +13,15 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/rybinmj/gbm_org_analysis",
     packages=setuptools.find_packages(),
+    install_requires=[
+        'pandas',
+        'statistics',
+        'matplotlib',
+        'seaborn',
+        'scipy',
+        'statsmodels',
+        'openpyxl',
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",

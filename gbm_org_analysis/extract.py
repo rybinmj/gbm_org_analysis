@@ -91,6 +91,7 @@ class GbmCellData():
         groups,
         file_location="Data_Raw/*/*_org?_Shortest_Distance_to_Surfaces_Surfaces*.csv",
         invasion_threshold_details=[0.75, 'DMSO'],
+        linreg_analysis=False,
         export_data=False,
         export_data_location="Data_Processed/",
         export_stats=False,
@@ -202,12 +203,17 @@ class GbmCellData():
         self.inv_thresh = self.get_invasion_threshold(self.dts)
 
         # Creating df of the number of cells whose dts values exceed invasion threshold
-        self.inv = count_values_above_threshold(
+        self.inv_raw = count_values_above_threshold(
             self.dts, self.inv_thresh)
 
+        # Normalizing number of invaded cells to the total number of gbm cells per organoid for fraction invaded
+        self.inv_norm = self.inv_raw / self.cn
+
         # Making bygroup and tidyform dfs
-        self.inv_bygroup, self.inv_tidy, self.inv_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.inv, 'NumGreatThanThresh')
+        self.inv_raw_bygroup, self.inv_raw_tidy, self.inv_raw_bygroup_tidy = \
+            mk_comb_and_tidy_dfs(self.inv_raw, 'NumOfInvadedCells')
+        self.inv_norm_bygroup, self.inv_norm_tidy, self.inv_norm_bygroup_tidy = \
+            mk_comb_and_tidy_dfs(self.inv_norm, 'FractOfInvadedCells')
 
         # ===== EXPORT DTS, CN, AND INV DATA TO EXCEL FILES =====
 
@@ -239,15 +245,30 @@ class GbmCellData():
             cn_file.save()
 
             # Number greater than threshold data
-            inv_file = pd.ExcelWriter(export_data_location + 'inv.xlsx')
-            self.inv.to_excel(inv_file, sheet_name='inv', index=False)
-            self.inv_tidy.to_excel(
-                inv_file, sheet_name='inv_tidy', index=False)
-            self.inv_bygroup.to_excel(
-                inv_file, sheet_name='inv_bygroup', index=False)
-            self.inv_bygroup_tidy.to_excel(
-                inv_file, sheet_name='inv_bygroup_tidy', index=False)
-            inv_file.save()
+            inv_raw_file = pd.ExcelWriter(
+                export_data_location + 'inv_raw.xlsx')
+            self.inv_raw.to_excel(
+                inv_raw_file, sheet_name='inv_raw', index=False)
+            self.inv_raw_tidy.to_excel(
+                inv_raw_file, sheet_name='inv_raw_tidy', index=False)
+            self.inv_raw_bygroup.to_excel(
+                inv_raw_file, sheet_name='inv_raw_bygroup', index=False)
+            self.inv_raw_bygroup_tidy.to_excel(
+                inv_raw_file, sheet_name='inv_raw_bygroup_tidy', index=False)
+            inv_raw_file.save()
+
+            # Fraction greater than threshold data
+            inv_norm_file = pd.ExcelWriter(
+                export_data_location + 'inv_norm.xlsx')
+            self.inv_norm.to_excel(
+                inv_norm_file, sheet_name='inv_norm', index=False)
+            self.inv_norm_tidy.to_excel(
+                inv_norm_file, sheet_name='inv_norm_tidy', index=False)
+            self.inv_norm_bygroup.to_excel(
+                inv_norm_file, sheet_name='inv_norm_bygroup', index=False)
+            self.inv_norm_bygroup_tidy.to_excel(
+                inv_norm_file, sheet_name='inv_norm_bygroup_tidy', index=False)
+            inv_norm_file.save()
 
             print("GBM cell data exported to excel files.")
 
@@ -257,13 +278,18 @@ class GbmCellData():
         self.cn_anova_fvalue, self.cn_anova_pvalue, self.cn_anova_tky = \
             stats.anova(self.cn_bygroup)
 
-        # Number greater than threshold anova
-        self.inv_anova_fvalue, self.inv_anova_pvalue, self.inv_anova_tky = \
-            stats.anova(self.inv_bygroup)
+        # Raw number greater than threshold anova
+        self.inv_raw_anova_fvalue, self.inv_raw_anova_pvalue, self.inv_raw_anova_tky = \
+            stats.anova(self.inv_raw_bygroup)
+
+        # Fraction number greater than threshold anova
+        self.inv_norm_anova_fvalue, self.inv_norm_anova_pvalue, self.inv_norm_anova_tky = \
+            stats.anova(self.inv_norm_bygroup)
 
         # Total number vs. number great linear regression
-        self.cn_inv_linreg = stats.linreg(
-            self.inv_bygroup_tidy['NumGreatThanThresh'], self.cn_bygroup_tidy['NumOfCells'])
+        if linreg_analysis is True:
+            self.cn_inv_linreg = stats.linreg(
+                self.inv_bygroup_tidy['NumGreatThanThresh'], self.cn_bygroup_tidy['NumOfCells'])
 
         # Saving results from statistics to text files
         if export_stats is True:
@@ -278,13 +304,21 @@ class GbmCellData():
             stats.save_to_txt(cn_anova_filename, cn_anova_text)
 
             # Number greater than threshold anova
-            inv_anova_text = stats.anova_results_as_text(self.inv_bygroup)
-            inv_anova_filename = export_stats_location + 'inv_anova.txt'
-            stats.save_to_txt(inv_anova_filename, inv_anova_text)
+            inv_raw_anova_text = stats.anova_results_as_text(
+                self.inv_raw_bygroup)
+            inv_raw_anova_filename = export_stats_location + 'inv_raw_anova.txt'
+            stats.save_to_txt(inv_raw_anova_filename, inv_raw_anova_text)
+
+            # Fraction greater than threshold anova
+            inv_norm_anova_text = stats.anova_results_as_text(
+                self.inv_norm_bygroup)
+            inv_norm_anova_filename = export_stats_location + 'inv_norm_anova.txt'
+            stats.save_to_txt(inv_norm_anova_filename, inv_norm_anova_text)
 
             # Linear regression
-            linreg_filename = export_stats_location + 'linreg.txt'
-            stats.save_to_txt(linreg_filename, str(self.cn_inv_linreg))
+            if linreg_analysis is True:
+                linreg_filename = export_stats_location + 'linreg.txt'
+                stats.save_to_txt(linreg_filename, str(self.cn_inv_linreg))
 
             print("Saved GBM cell statistical test results as text files.")
 
@@ -301,10 +335,15 @@ class GbmCellData():
             # Displaying figures
             if figures == 'show':
                 figs.bargraph(self.cn_bygroup, group_colors=colors)
-                figs.bargraph(self.inv_bygroup, group_colors=colors)
+                figs.bargraph(
+                    self.inv_raw_bygroup, group_colors=colors, y_label='Number of Invaded Cells')
+                figs.bargraph(
+                    self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
                 figs.boxplot(self.dts_tidy, group_colors=colors)
-                figs.linregplot(self.inv_tidy, self.cn_tidy,
-                                group_colors=colors)
+
+                if linreg_analysis is True:
+                    figs.linregplot(self.inv_tidy, self.cn_tidy,
+                                    group_colors=colors)
 
             # Saving figures
             if figures == 'save':
@@ -320,11 +359,18 @@ class GbmCellData():
                 print("Saved bargraph of total number of cells as PDF.")
                 plt.close()
 
-                self.inv_bargraph = figs.bargraph(
-                    self.inv_bygroup, group_colors=colors)
-                inv_bargraph_filename = export_figs_location + 'inv_bargraph.pdf'
-                figs.figtofile(self.inv_bargraph, inv_bargraph_filename)
+                self.inv_raw_bargraph = figs.bargraph(
+                    self.inv_raw_bygroup, group_colors=colors, y_label='Number of Invaded Cells')
+                inv_raw_bargraph_filename = export_figs_location + 'inv_raw_bargraph.pdf'
+                figs.figtofile(self.inv_raw_bargraph, inv_raw_bargraph_filename)
                 print("Saved bargraph of number of invading cells as PDF.")
+                plt.close()
+
+                self.inv_norm_bargraph = figs.bargraph(
+                    self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
+                inv_norm_bargraph_filename = export_figs_location + 'inv_norm_bargraph.pdf'
+                figs.figtofile(self.inv_norm_bargraph, inv_norm_bargraph_filename)
+                print("Saved bargraph of fraction of invading cells as PDF.")
                 plt.close()
 
                 self.dts_boxplot = figs.boxplot(
@@ -334,12 +380,13 @@ class GbmCellData():
                 print("Saved boxplot of distace to surface values as PDF.")
                 plt.close()
 
-                self.linregplot = figs.linregplot(
-                    self.inv_tidy, self.cn_tidy, group_colors=colors)
-                linregplot_filename = export_figs_location + 'linregplot.pdf'
-                figs.figtofile(self.linregplot, linregplot_filename)
-                print("Saved linear regression plot as PDF.")
-                plt.close()
+                if linreg_analysis is True:
+                    self.linregplot = figs.linregplot(
+                        self.inv_tidy, self.cn_tidy, group_colors=colors)
+                    linregplot_filename = export_figs_location + 'linregplot.pdf'
+                    figs.figtofile(self.linregplot, linregplot_filename)
+                    print("Saved linear regression plot as PDF.")
+                    plt.close()
         else:
             if figures is not None:
                 print(
