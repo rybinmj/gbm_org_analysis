@@ -13,6 +13,14 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/rybinmj/gbm_org_analysis",
     packages=setuptools.find_packages(),
+    install_requires=[
+        'pandas',
+        'statistics',
+        'matplotlib',
+        'seaborn',
+        'scipy',
+        'statsmodels',
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
