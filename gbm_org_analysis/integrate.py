@@ -10,47 +10,66 @@ class GbmCellData():
     def __init__(
         self,
         data_locations=[
-            '/*_1/Data_Processed/',
-            '/*_2/Data_Processed/',
-            '/*_3/Data_Processed/',
+            '*_1/Data_Processed/',
+            '*_2/Data_Processed/',
+            '*_3/Data_Processed/',
         ],
         total_cells_filename='cn.xlsx',
         total_cells_sheetname='cn_bygroup',
-        invaded_cells_filename='inv.xlsx',
+        invaded_cells_filename='inv_raw.xlsx',
         invaded_cells_sheetname='inv_raw_bygroup',
         cell_distance_filename='dts.xlsx',
-        cell_distance_sheetname='dts_bygroup',
+        cell_distance_sheetname='dts_tidy',
         export_data=False,
-        export_data_location="Integrated_Data/",
+        export_data_location="Integrated_Results/Data_Processed/",
         export_stats=False,
-        export_stats_location="Integrated_Statistics/",
+        export_stats_location="Integrated_Results/Statistics/",
         figures="",
         figure_colors=None,
-        export_figs_location="Integrated_Figures_Original/",
+        export_figs_location="Integrated_Results/Figures_Original/",
 
     ):
 
         # ===== COMPILING DATA =====
 
         data_by_exp = {}
+        orgs_per_group = {}
         n = 0
         for location in data_locations:
             n += 1
             exp_id = f'exp_{n}'
 
-            cn_filename = glob.glob(location + total_cells_filename)
+            cn_filename = glob.glob(location + total_cells_filename)[0]
             cn_raw = pd.read_excel(
-                cn_filename, sheetname=total_cells_sheetname)
+                cn_filename, sheet_name=total_cells_sheetname, engine='openpyxl')
             cn_norm = cn_raw / cn_raw['DMSO'].mean()
 
-            inv_filename = glob.glob(location + invaded_cells_filename)
+            inv_filename = glob.glob(location + invaded_cells_filename)[0]
             inv_raw = pd.read_excel(
-                inv_filename, sheetname=invaded_cells_sheetname)
+                inv_filename, sheet_name=invaded_cells_sheetname, engine='openpyxl')
             inv_norm = inv_raw / cn_raw
 
-            dts_filename = glob.glob(location + cell_distance_filename)
+            dts_filename = glob.glob(location + cell_distance_filename)[0]
             dts = pd.read_excel(
-                dts_filename, sheetname=cell_distance_sheetname)
+                dts_filename, sheet_name=cell_distance_sheetname, engine='openpyxl')
+
+            all_org_names = list(dict.fromkeys(list(dts['Org'])))
+            all_orgs_as_groupname = []
+            for org in all_org_names:
+                all_orgs_as_groupname.append(org[:-5])
+            if exp_id not in orgs_per_group:
+                orgs_per_group[exp_id] = [
+                    (group, all_orgs_as_groupname.count(group)) for group in set(all_orgs_as_groupname)]
+
+            if n != 1:
+                new_org_numbering = []
+                for org in dts['Org']:
+                    for org_counts in orgs_per_group[f'exp_{n-1}']:
+                        if org[:-5] == org_counts[0]:
+                            org_num = int(org[-1:]) + org_counts[1]
+                            new_org = f"{org[:-1]}{org_num}"
+                            new_org_numbering.append(new_org)
+                dts['Org'] = new_org_numbering
 
             if exp_id not in data_by_exp:
                 data_by_exp[exp_id] = [cn_raw, cn_norm, inv_raw, inv_norm, dts]
@@ -78,32 +97,32 @@ class GbmCellData():
         # ===== EXPORTING DATA =====
 
         if export_data is True:
-            if export_data_location == 'Integrated_Data/':
-                if 'Integrated_Data' not in os.listdir():
-                    os.mkdir('Integrated_Data')
+            if export_data_location == 'Integrated_Results/Data_Processed/':
+                if 'Integrated_Results' not in os.listdir():
+                    os.mkdir('Integrated_Results')
+                if 'Data_Processed' not in os.listdir('Integrated_Results/'):
+                    os.mkdir('Integrated_Results/Data_Processed')
 
             cn_file = pd.ExcelWriter(
-                export_data_location + 'integrated_cn.xlsx')
-            self.data['cn_raw'].to_excel(
+                export_data_location + 'cn.xlsx')
+            data['cn_raw'].to_excel(
                 cn_file, sheet_name='cn_raw', index=False)
-            self.data['cn_norm'].to_excel(
+            data['cn_norm'].to_excel(
                 cn_file, sheet_name='cn_norm', index=False)
             cn_file.save()
 
             inv_file = pd.ExcelWriter(
-                export_data_location + 'integrated_inv.xlsx')
-            self.data['inv_raw'].to_excel(
+                export_data_location + 'inv.xlsx')
+            data['inv_raw'].to_excel(
                 inv_file, sheet_name='inv_raw', index=False)
-            self.data['inv_norm'].to_excel(
+            data['inv_norm'].to_excel(
                 inv_file, sheet_name='inv_norm', index=False)
             inv_file.save()
 
             dts_file = pd.ExcelWriter(
-                export_data_location + 'integrated_dts.xlsx')
-            self.data['dts_raw'].to_excel(
-                dts_file, sheet_name='dts_raw', index=False)
-            self.data['dts_norm'].to_excel(
-                dts_file, sheet_name='dts_norm', index=False)
+                export_data_location + 'dts.xlsx')
+            data['dts'].to_excel(
+                dts_file, sheet_name='dts_tidy', index=False)
             dts_file.save()
 
             print("Integrated data exported to excel files")
@@ -111,9 +130,11 @@ class GbmCellData():
         # ===== EXPORTING STATISTICS =====
 
         if export_stats is True:
-            if export_stats_location == 'Integrated_Statistics/':
-                if 'Integrated_Statistics' not in os.listdir():
-                    os.mkdir('Integrated_Statistics')
+            if export_stats_location == 'Integrated_Results/Statistics/':
+                if 'Integrated_Results' not in os.listdir():
+                    os.mkdir('Integrated_Results')
+                if 'Statistics' not in os.listdir('Integrated_Results/'):
+                    os.mkdir('Integrated_Results/Statistics')
 
             for key, values in data.items():
                 if key == 'dts':
@@ -146,15 +167,17 @@ class GbmCellData():
                                       y_label=y_label)
 
             if figures == 'save':
-                if export_figs_location == 'Integrated_Figures_Original/':
-                    if 'Integrated_Figures_Original' not in os.listdir():
-                        os.mkdir('Integrated_Figures_Original')
+                if export_figs_location == 'Integrated_Results/Figures_Original/':
+                    if 'Integrated_Results' not in os.listdir():
+                        os.mkdir('Integrated_Results')
+                    if 'Figures_Original' not in os.listdir('Integrated_Results/'):
+                        os.mkdir('Integrated_Results/Figures_Original')
 
                 for key, value in data.items():
                     if key == 'dts':
                         dts_boxplot = figs.boxplot(value, group_colors=colors)
                         dts_filename = export_figs_location + 'dts_boxplot.pdf'
-                        figs.figstofile(dts_boxplot, dts_filename)
+                        figs.figtofile(dts_boxplot, dts_filename)
                     else:
                         if key.startswith('cn'):
                             y_label = 'Number of Cells'
