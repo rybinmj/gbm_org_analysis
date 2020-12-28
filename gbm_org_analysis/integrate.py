@@ -32,13 +32,22 @@ class GbmCellData():
 
         # ===== COMPILING DATA =====
 
+        def cumulative(lst):
+            new_list = []
+            j = 0
+            for i in range(0, len(lst)):
+                j += lst[i]
+                new_list.append(j)
+            return new_list
+
         data_by_exp = {}
-        orgs_per_group = {}
+        orgs_per_group_by_exp = {}
         n = 0
         for location in data_locations:
             n += 1
             exp_id = f'exp_{n}'
 
+            # Extrating data
             cn_filename = glob.glob(location + total_cells_filename)[0]
             cn_raw = pd.read_excel(
                 cn_filename, sheet_name=total_cells_sheetname, engine='openpyxl')
@@ -53,27 +62,52 @@ class GbmCellData():
             dts = pd.read_excel(
                 dts_filename, sheet_name=cell_distance_sheetname, engine='openpyxl')
 
+            # Getting org and group names to change organoid number in combined data
             all_org_names = list(dict.fromkeys(list(dts['Org'])))
+            groups = []
+            for org in all_org_names:
+                org_id_split = org.split("_")
+                if org_id_split[0] not in groups:
+                    groups.append(org_id_split[0])
+
             all_orgs_as_groupname = []
             for org in all_org_names:
                 all_orgs_as_groupname.append(org[:-5])
-            if exp_id not in orgs_per_group:
-                orgs_per_group[exp_id] = [
+            if exp_id not in orgs_per_group_by_exp:
+                orgs_per_group_by_exp[exp_id] = [
                     (group, all_orgs_as_groupname.count(group)) for group in set(all_orgs_as_groupname)]
+
+            orgs_per_group_by_group = {}
+            for group in list(set(all_orgs_as_groupname)):
+                if group not in orgs_per_group_by_group:
+                    orgs_per_group_by_group[group] = []
+            for exp_counts in orgs_per_group_by_exp.values():
+                for group_tuple in exp_counts:
+                    for group in orgs_per_group_by_group.keys():
+                        if group_tuple[0] == group:
+                            orgs_per_group_by_group[group] = orgs_per_group_by_group[group] + [
+                                group_tuple[1]]
+
+            orgs_per_group_cumulative = {}
+            for group, counts in orgs_per_group_by_group.items():
+                if group not in orgs_per_group_cumulative:
+                    orgs_per_group_cumulative[group] = cumulative(counts)
 
             if n != 1:
                 new_org_numbering = []
                 for org in dts['Org']:
-                    for org_counts in orgs_per_group[f'exp_{n-1}']:
-                        if org[:-5] == org_counts[0]:
-                            org_num = int(org[-1:]) + org_counts[1]
+                    for group, org_count in orgs_per_group_cumulative.items():
+                        if org[:-5] == group:
+                            org_num = int(org[-1:]) + org_count[n - 2]
                             new_org = f"{org[:-1]}{org_num}"
                             new_org_numbering.append(new_org)
                 dts['Org'] = new_org_numbering
 
+            # Adding all data into data_by_exp dictionary
             if exp_id not in data_by_exp:
                 data_by_exp[exp_id] = [cn_raw, cn_norm, inv_raw, inv_norm, dts]
 
+        # Creating skeleton of dictionary that will hold data organized by type instead of experiment
         data_by_type = {
             'cn_raw': [],
             'cn_norm': [],
@@ -89,10 +123,23 @@ class GbmCellData():
             data_by_type['inv_norm'] = data_by_type['inv_norm'] + [value[3]]
             data_by_type['dts'] = data_by_type['dts'] + [value[4]]
 
+        # Making final data dictionary with concatenated dataframes
         data = {}
         for data_type, values in data_by_type.items():
             if data_type not in data:
                 data[data_type] = pd.concat(values)
+
+        # Making list of correct order of organoids in dts data
+        old_order = list(dict.fromkeys(list(data['dts']['Org'])))
+        new_order = []
+        for group in groups:
+            group_order = [org for org in old_order if org.startswith(group)]
+            new_order = new_order + group_order
+
+        # Reorder dts dataframe with correct order
+        df = data['dts'].pivot(columns='Org', values='DTS')
+        df = df.reindex(columns=new_order)
+        data['dts'] = pd.melt(df).dropna()
 
         # ===== EXPORTING DATA =====
 
