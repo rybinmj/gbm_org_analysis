@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="gbm_org_analysis",
-    version="1.0.0",
+    version="2.0.0",
     author="Matt Rybin",
     author_email="mxr2011@miami.edu",
     description="Extracts and analyzes GBM-organoid data exported from Imaris",
