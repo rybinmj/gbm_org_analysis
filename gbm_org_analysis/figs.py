@@ -53,8 +53,9 @@ def get_colors_for_tidy(df_tidy, colors):
 
     groups = []
     for org in orgs:
-        if org[:-5] not in groups:
-            groups.append(org[:-5])
+        org_id = org.split("_")
+        if org_id[0] not in groups:
+            groups.append(org_id[0])
 
     needed_colors = colors[0:len(groups)]
     color_dict = dict(zip(groups, needed_colors))
@@ -62,7 +63,8 @@ def get_colors_for_tidy(df_tidy, colors):
     all_colors = []
     for group, color in color_dict.items():
         for org in orgs:
-            if org[:-5] == group:
+            org_id = org.split("_")
+            if org_id[0] == group:
                 all_colors.append(color)
 
     return all_colors
