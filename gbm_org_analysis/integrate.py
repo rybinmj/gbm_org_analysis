@@ -172,7 +172,7 @@ class GbmCellData():
                 dts_file, sheet_name='dts_tidy', index=False)
             dts_file.save()
 
-            print("Integrated data exported to excel files")
+            print("Integrated GBM cell data exported to excel files.")
 
         # ===== EXPORTING STATISTICS =====
 
@@ -236,29 +236,156 @@ class GbmCellData():
                             value, group_colors=colors, y_label=y_label)
                         filename = export_figs_location + f'{key}_bargraph.pdf'
                         figs.figtofile(plot, filename)
-                print('Saved figures as PDFs.')
+                print('Saved GBM cell figures as PDFs.')
         else:
             if figures is not None:
                 print(
-                    "Pass figures='show' to display figures without saving. \n"
+                    "Pass figures='show' to display GBM cell figures without saving. \n"
                     "Pass figures='save' to save without displaying."
                 )
 
 
-# class OrganoidData():
+class OrganoidData():
 
-#     def __init(
-#         self,
-#         data_locations=[
-#             '/*_1/Data_Processed/',
-#             '/*_2/Data_Processed/',
-#             '/*_3/Data_Processed/',
-#         ],
-#         surf_area_filename='sa.xlsx',
-#         surf_area_sheetname='sa_bygroup',
-#         vol_filename='vol.xlsx',
-#         vol_sheetname='vol_bygroup',
+    def __init__(
+        self,
+        data_locations=[
+            '*_1/Data_Processed/',
+            '*_2/Data_Processed/',
+            '*_3/Data_Processed/',
+        ],
+        surf_area_filename='sa.xlsx',
+        surf_area_sheetname='sa_bygroup',
+        volume_filename='vol.xlsx',
+        volume_sheetname='vol_bygroup',
+        export_data=False,
+        export_data_location="Integrated_Results/Data_Processed/",
+        export_stats=False,
+        export_stats_location="Integrated_Results/Statistics/",
+        figures="",
+        figure_colors=None,
+        export_figs_location="Integrated_Results/Figures_Original/",
 
+    ):
 
-#     ):
-#         a = 1
+        data_by_exp = {}
+        n = 0
+        for location in data_locations:
+            n += 1
+            exp_id = f'exp_{n}'
+
+            # Extrating data
+            sa_filename = glob.glob(location + surf_area_filename)[0]
+            sa_raw = pd.read_excel(
+                sa_filename, sheet_name=surf_area_sheetname, engine='openpyxl')
+            sa_norm = sa_raw / sa_raw['DMSO'].mean()
+
+            vol_filename = glob.glob(location + volume_filename)[0]
+            vol_raw = pd.read_excel(
+                vol_filename, sheet_name=volume_sheetname, engine='openpyxl')
+            vol_norm = vol_raw / vol_raw['DMSO'].mean()
+
+            if exp_id not in data_by_exp:
+                data_by_exp[exp_id] = [sa_raw, sa_norm, vol_raw, vol_norm]
+
+        data_by_type = {
+            'sa_raw': [],
+            'sa_norm': [],
+            'vol_raw': [],
+            'vol_norm': [],
+        }
+
+        for value in list(data_by_exp.values()):
+            data_by_type['sa_raw'] = data_by_type['sa_raw'] + [value[0]]
+            data_by_type['sa_norm'] = data_by_type['sa_norm'] + [value[1]]
+            data_by_type['vol_raw'] = data_by_type['vol_raw'] + [value[2]]
+            data_by_type['vol_norm'] = data_by_type['vol_norm'] + [value[3]]
+
+        data = {}
+        for data_type, values in data_by_type.items():
+            if data_type not in data:
+                data[data_type] = pd.concat(values)
+
+        # ===== EXPORTING DATA =====
+
+        if export_data is True:
+            if export_data_location == 'Integrated_Results/Data_Processed/':
+                if 'Integrated_Results' not in os.listdir():
+                    os.mkdir('Integrated_Results')
+                if 'Data_Processed' not in os.listdir('Integrated_Results/'):
+                    os.mkdir('Integrated_Results/Data_Processed')
+
+            sa_file = pd.ExcelWriter(
+                export_data_location + 'sa.xlsx')
+            data['sa_raw'].to_excel(
+                sa_file, sheet_name='sa_raw', index=False)
+            data['sa_norm'].to_excel(
+                sa_file, sheet_name='sa_norm', index=False)
+            sa_file.save()
+
+            vol_file = pd.ExcelWriter(
+                export_data_location + 'vol.xlsx')
+            data['vol_raw'].to_excel(
+                vol_file, sheet_name='vol_raw', index=False)
+            data['vol_norm'].to_excel(
+                vol_file, sheet_name='vol_norm', index=False)
+            vol_file.save()
+
+            print("Integrated organoid data exported to excel files.")
+
+        # ===== EXPORTING STATISTICS =====
+
+        if export_stats is True:
+            if export_stats_location == 'Integrated_Results/Statistics/':
+                if 'Integrated_Results' not in os.listdir():
+                    os.mkdir('Integrated_Results')
+                if 'Statistics' not in os.listdir('Integrated_Results/'):
+                    os.mkdir('Integrated_Results/Statistics')
+
+            for key, values in data.items():
+                anova_text = stats.anova_results_as_text(values)
+                filename = export_stats_location + f'{key}_anova.txt'
+                stats.save_to_txt(filename, anova_text)
+
+            print("Saved organoid statistical test results as text files.")
+
+        # ===== EXPORTING FIGURES =====
+
+        if figures in ['show', 'save']:
+            if figure_colors is None:
+                colors = None
+            else:
+                colors = figure_colors
+
+            if figures == 'show':
+                for key, value in data.items():
+                    if key.startswith('sa'):
+                        y_label = 'Surface Area'
+                    if key.startswith('vol'):
+                        y_label = 'Volume'
+                    figs.bargraph(value, group_colors=colors,
+                                  y_label=y_label)
+
+            if figures == 'save':
+                if export_figs_location == 'Integrated_Results/Figures_Original/':
+                    if 'Integrated_Results' not in os.listdir():
+                        os.mkdir('Integrated_Results')
+                    if 'Figures_Original' not in os.listdir('Integrated_Results/'):
+                        os.mkdir('Integrated_Results/Figures_Original')
+
+                for key, value in data.items():
+                    if key.startswith('sa'):
+                        y_label = 'Surface Area'
+                    if key.startswith('vol'):
+                        y_label = 'Volume'
+                    plot = figs.bargraph(
+                        value, group_colors=colors, y_label=y_label)
+                    filename = export_figs_location + f'{key}_bargraph.pdf'
+                    figs.figtofile(plot, filename)
+                print('Saved organoid figures as PDFs.')
+        else:
+            if figures is not None:
+                print(
+                    "Pass figures='show' to display organoid figures without saving. \n"
+                    "Pass figures='save' to save without displaying."
+                )
