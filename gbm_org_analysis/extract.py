@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import glob
 import os
 from statistics import mean
@@ -270,7 +271,7 @@ class GbmCellData():
                 inv_norm_file, sheet_name='inv_norm_bygroup_tidy', index=False)
             inv_norm_file.save()
 
-            print("GBM cell data exported to excel files.")
+            print("Exported GBM cell data to excel files.")
 
         # ===== STATISTICS =====
 
@@ -362,14 +363,16 @@ class GbmCellData():
                 self.inv_raw_bargraph = figs.bargraph(
                     self.inv_raw_bygroup, group_colors=colors, y_label='Number of Invaded Cells')
                 inv_raw_bargraph_filename = export_figs_location + 'inv_raw_bargraph.pdf'
-                figs.figtofile(self.inv_raw_bargraph, inv_raw_bargraph_filename)
+                figs.figtofile(self.inv_raw_bargraph,
+                               inv_raw_bargraph_filename)
                 print("Saved bargraph of number of invading cells as PDF.")
                 plt.close()
 
                 self.inv_norm_bargraph = figs.bargraph(
                     self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
                 inv_norm_bargraph_filename = export_figs_location + 'inv_norm_bargraph.pdf'
-                figs.figtofile(self.inv_norm_bargraph, inv_norm_bargraph_filename)
+                figs.figtofile(self.inv_norm_bargraph,
+                               inv_norm_bargraph_filename)
                 print("Saved bargraph of fraction of invading cells as PDF.")
                 plt.close()
 
@@ -562,6 +565,17 @@ class OrganoidData():
         # Extracting volume and surface area data
         self.vol = self.fullvol - self.extract_org_data(self.vol_files_dict)
         self.sa = self.extract_org_data(self.sa_files_dict) - self.fullarea
+
+        # Replacing negative vol or sa values with NaN
+        for data in [self.vol, self.sa]:
+            for values in data.values.tolist():
+                if any(value < 0 for value in values):
+                    print(
+                        "Note: Negative value(s) found and removed in processed surface area or volume data.")
+            for col, value in data.items():
+                value = float(value)
+                if value < 0:
+                    data.replace(value, np.NaN, inplace=True)
 
         # Making bygroup and tidyform dfs
         self.vol_bygroup, self.vol_tidy, self.vol_bygroup_tidy = \
