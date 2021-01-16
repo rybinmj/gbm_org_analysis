@@ -249,3 +249,34 @@ def linregplot(
     plt.tight_layout()
 
     return plt
+
+
+def norm_stacked_kde(
+    df,  # Designed to take dts_bygroup_tidy
+    group_colors=None,
+    size=[8, 8],
+    x_label="Distance to Surface",
+    y_label="Probability Density",
+):
+    """Plots normalized, stacked KDE plot of distance to surface data"""
+
+    if group_colors is None:
+        colors = None
+    else:
+        colors = get_colors_for_tidy(df, group_colors)
+
+    plt.figure(figsize=size)
+    plt.rcParams.update({'font.size': 20})
+    sns.kdeplot(
+        data=df,
+        x=df.columns[1],  # 'DTS'
+        hue=df.columns[0],  # 'Group'
+        palette=colors,
+        multiple='fill',
+        common_norm=False,
+        legend=False,
+    )
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+
+    return plt

@@ -18,15 +18,17 @@ class GbmCellData():
         total_cells_sheetname='cn_bygroup',
         invaded_cells_filename='inv_raw.xlsx',
         invaded_cells_sheetname='inv_raw_bygroup',
+        invasion_threshold_sheetname='inv_threshold',
         cell_distance_filename='dts.xlsx',
         cell_distance_sheetname='dts_tidy',
+        normalization=False,
         export_data=False,
-        export_data_location="Integrated_Results/Data_Processed/",
+        export_data_location="Integrated/Data_Processed/",
         export_stats=False,
-        export_stats_location="Integrated_Results/Statistics/",
+        export_stats_location="Integrated/Statistics/",
         figures="",
         figure_colors=None,
-        export_figs_location="Integrated_Results/Figures_Original/",
+        export_figs_location="Integrated/Figures_Original/",
 
     ):
 
@@ -42,6 +44,7 @@ class GbmCellData():
 
         data_by_exp = {}
         orgs_per_group_by_exp = {}
+        inv_thresholds = []
         n = 0
         for location in data_locations:
             n += 1
@@ -57,6 +60,10 @@ class GbmCellData():
             inv_raw = pd.read_excel(
                 inv_filename, sheet_name=invaded_cells_sheetname, engine='openpyxl')
             inv_norm = inv_raw / cn_raw
+
+            inv_thresh = pd.read_excel(
+                inv_filename, sheet_name=invasion_threshold_sheetname, engine='openpyxl')
+            inv_thresholds.append(inv_thresh)
 
             dts_filename = glob.glob(location + cell_distance_filename)[0]
             dts = pd.read_excel(
@@ -129,6 +136,8 @@ class GbmCellData():
             if data_type not in data:
                 data[data_type] = pd.concat(values)
 
+        inv_thresholds_concat = pd.concat(inv_thresholds)
+
         # Making list of correct order of organoids in dts data
         old_order = list(dict.fromkeys(list(data['dts']['Org'])))
         new_order = []
@@ -154,16 +163,20 @@ class GbmCellData():
                 export_data_location + 'cn.xlsx')
             data['cn_raw'].to_excel(
                 cn_file, sheet_name='cn_raw', index=False)
-            data['cn_norm'].to_excel(
-                cn_file, sheet_name='cn_norm', index=False)
+            if normalization is True:
+                data['cn_norm'].to_excel(
+                    cn_file, sheet_name='cn_norm', index=False)
             cn_file.save()
 
             inv_file = pd.ExcelWriter(
                 export_data_location + 'inv.xlsx')
             data['inv_raw'].to_excel(
                 inv_file, sheet_name='inv_raw', index=False)
-            data['inv_norm'].to_excel(
-                inv_file, sheet_name='inv_norm', index=False)
+            if normalization is True:
+                data['inv_norm'].to_excel(
+                    inv_file, sheet_name='inv_norm', index=False)
+            inv_thresholds_concat.to_excel(
+                inv_file, sheet_name='inv_threshold', index=False)
             inv_file.save()
 
             dts_file = pd.ExcelWriter(
@@ -186,6 +199,9 @@ class GbmCellData():
             for key, values in data.items():
                 if key == 'dts':
                     continue
+                if normalization is False:
+                    if key == 'cn_norm' or 'inv_norm':
+                        continue
                 anova_text = stats.anova_results_as_text(values)
                 filename = export_stats_location + f'{key}_anova.txt'
                 stats.save_to_txt(filename, anova_text)
@@ -199,8 +215,16 @@ class GbmCellData():
             else:
                 colors = figure_colors
 
+            groups = data['dts']['Group'].values.tolist()
+            groups_only = [group.split("_")[0] for group in groups]
+            dts_bygroup_tidy = data['dts'].copy()
+            dts_bygroup_tidy['Group'] = groups_only
+
             if figures == 'show':
                 for key, value in data.items():
+                    if normalization is False:
+                        if key == 'cn_norm' or 'inv_norm':
+                            continue
                     if key == 'dts':
                         figs.boxplot(value, group_colors=colors)
                     else:
@@ -212,6 +236,7 @@ class GbmCellData():
                             y_label = 'Invaded Cells \n (as fraction of total)'
                         figs.bargraph(value, group_colors=colors,
                                       y_label=y_label)
+                figs.norm_stacked_kde(dts_bygroup_tidy, group_colors=colors)
 
             if figures == 'save':
                 if export_figs_location == 'Integrated_Results/Figures_Original/':
@@ -221,6 +246,9 @@ class GbmCellData():
                         os.mkdir('Integrated_Results/Figures_Original')
 
                 for key, value in data.items():
+                    if normalization is False:
+                        if key == 'cn_norm' or 'inv_norm':
+                            continue
                     if key == 'dts':
                         dts_boxplot = figs.boxplot(value, group_colors=colors)
                         dts_filename = export_figs_location + 'dts_boxplot.pdf'
@@ -236,6 +264,11 @@ class GbmCellData():
                             value, group_colors=colors, y_label=y_label)
                         filename = export_figs_location + f'{key}_bargraph.pdf'
                         figs.figtofile(plot, filename)
+
+                kde = figs.norm_stacked_kde(
+                    dts_bygroup_tidy, group_colors=colors)
+                kde_filename = export_figs_location + 'kde.pdf'
+                figs.figstofile(kde, kde_filename)
                 print('Saved GBM cell figures as PDFs.')
         else:
             if figures is not None:
@@ -258,6 +291,7 @@ class OrganoidData():
         surf_area_sheetname='sa_bygroup',
         volume_filename='vol.xlsx',
         volume_sheetname='vol_bygroup',
+        normalization=False,
         export_data=False,
         export_data_location="Integrated_Results/Data_Processed/",
         export_stats=False,
@@ -319,16 +353,18 @@ class OrganoidData():
                 export_data_location + 'sa.xlsx')
             data['sa_raw'].to_excel(
                 sa_file, sheet_name='sa_raw', index=False)
-            data['sa_norm'].to_excel(
-                sa_file, sheet_name='sa_norm', index=False)
+            if normalization is True:
+                data['sa_norm'].to_excel(
+                    sa_file, sheet_name='sa_norm', index=False)
             sa_file.save()
 
             vol_file = pd.ExcelWriter(
                 export_data_location + 'vol.xlsx')
             data['vol_raw'].to_excel(
                 vol_file, sheet_name='vol_raw', index=False)
-            data['vol_norm'].to_excel(
-                vol_file, sheet_name='vol_norm', index=False)
+            if normalization is True:
+                data['vol_norm'].to_excel(
+                    vol_file, sheet_name='vol_norm', index=False)
             vol_file.save()
 
             print("Integrated organoid data exported to excel files.")
@@ -343,6 +379,9 @@ class OrganoidData():
                     os.mkdir('Integrated_Results/Statistics')
 
             for key, values in data.items():
+                if normalization is False:
+                    if key == 'sa_norm' or 'vol_norm':
+                        continue
                 anova_text = stats.anova_results_as_text(values)
                 filename = export_stats_location + f'{key}_anova.txt'
                 stats.save_to_txt(filename, anova_text)
@@ -359,6 +398,9 @@ class OrganoidData():
 
             if figures == 'show':
                 for key, value in data.items():
+                    if normalization is False:
+                        if key == 'sa_norm' or 'vol_norm':
+                            continue
                     if key.startswith('sa'):
                         y_label = 'Surface Area'
                     if key.startswith('vol'):
@@ -374,6 +416,9 @@ class OrganoidData():
                         os.mkdir('Integrated_Results/Figures_Original')
 
                 for key, value in data.items():
+                    if normalization is False:
+                        if key == 'sa_norm' or 'vol_norm':
+                            continue
                     if key.startswith('sa'):
                         y_label = 'Surface Area'
                     if key.startswith('vol'):

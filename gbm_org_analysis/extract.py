@@ -92,6 +92,7 @@ class GbmCellData():
         groups,
         file_location="Data_Raw/*/*_org?_Shortest_Distance_to_Surfaces_Surfaces*.csv",
         invasion_threshold_details=[0.75, 'DMSO'],
+        normalization=False,
         linreg_analysis=False,
         export_data=False,
         export_data_location="Data_Processed/",
@@ -256,20 +257,23 @@ class GbmCellData():
                 inv_raw_file, sheet_name='inv_raw_bygroup', index=False)
             self.inv_raw_bygroup_tidy.to_excel(
                 inv_raw_file, sheet_name='inv_raw_bygroup_tidy', index=False)
+            pd.DataFrame([self.inv_thresh]).to_excel(
+                inv_raw_file, sheetname='inv_threshold', index=False)
             inv_raw_file.save()
 
             # Fraction greater than threshold data
-            inv_norm_file = pd.ExcelWriter(
-                export_data_location + 'inv_norm.xlsx')
-            self.inv_norm.to_excel(
-                inv_norm_file, sheet_name='inv_norm', index=False)
-            self.inv_norm_tidy.to_excel(
-                inv_norm_file, sheet_name='inv_norm_tidy', index=False)
-            self.inv_norm_bygroup.to_excel(
-                inv_norm_file, sheet_name='inv_norm_bygroup', index=False)
-            self.inv_norm_bygroup_tidy.to_excel(
-                inv_norm_file, sheet_name='inv_norm_bygroup_tidy', index=False)
-            inv_norm_file.save()
+            if normalization is True:
+                inv_norm_file = pd.ExcelWriter(
+                    export_data_location + 'inv_norm.xlsx')
+                self.inv_norm.to_excel(
+                    inv_norm_file, sheet_name='inv_norm', index=False)
+                self.inv_norm_tidy.to_excel(
+                    inv_norm_file, sheet_name='inv_norm_tidy', index=False)
+                self.inv_norm_bygroup.to_excel(
+                    inv_norm_file, sheet_name='inv_norm_bygroup', index=False)
+                self.inv_norm_bygroup_tidy.to_excel(
+                    inv_norm_file, sheet_name='inv_norm_bygroup_tidy', index=False)
+                inv_norm_file.save()
 
             print("Exported GBM cell data to excel files.")
 
@@ -311,10 +315,11 @@ class GbmCellData():
             stats.save_to_txt(inv_raw_anova_filename, inv_raw_anova_text)
 
             # Fraction greater than threshold anova
-            inv_norm_anova_text = stats.anova_results_as_text(
-                self.inv_norm_bygroup)
-            inv_norm_anova_filename = export_stats_location + 'inv_norm_anova.txt'
-            stats.save_to_txt(inv_norm_anova_filename, inv_norm_anova_text)
+            if normalization is True:
+                inv_norm_anova_text = stats.anova_results_as_text(
+                    self.inv_norm_bygroup)
+                inv_norm_anova_filename = export_stats_location + 'inv_norm_anova.txt'
+                stats.save_to_txt(inv_norm_anova_filename, inv_norm_anova_text)
 
             # Linear regression
             if linreg_analysis is True:
@@ -338,10 +343,12 @@ class GbmCellData():
                 figs.bargraph(self.cn_bygroup, group_colors=colors)
                 figs.bargraph(
                     self.inv_raw_bygroup, group_colors=colors, y_label='Number of Invaded Cells')
-                figs.bargraph(
-                    self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
                 figs.boxplot(self.dts_tidy, group_colors=colors)
-
+                figs.norm_stacked_kde(
+                    self.dts_bygroup_tidy, group_colors=colors)
+                if normalization is True:
+                    figs.bargraph(
+                        self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
                 if linreg_analysis is True:
                     figs.linregplot(self.inv_tidy, self.cn_tidy,
                                     group_colors=colors)
@@ -368,20 +375,29 @@ class GbmCellData():
                 print("Saved bargraph of number of invading cells as PDF.")
                 plt.close()
 
-                self.inv_norm_bargraph = figs.bargraph(
-                    self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
-                inv_norm_bargraph_filename = export_figs_location + 'inv_norm_bargraph.pdf'
-                figs.figtofile(self.inv_norm_bargraph,
-                               inv_norm_bargraph_filename)
-                print("Saved bargraph of fraction of invading cells as PDF.")
-                plt.close()
-
                 self.dts_boxplot = figs.boxplot(
                     self.dts_tidy, group_colors=colors)
                 dts_boxplot_filename = export_figs_location + 'dts_boxplot.pdf'
                 figs.figtofile(self.dts_boxplot, dts_boxplot_filename)
                 print("Saved boxplot of distace to surface values as PDF.")
                 plt.close()
+
+                self.kde = figs.norm_stacked_kde(
+                    self.dts_bygroup_tidy, group_colors=colors)
+                kde_filename = export_figs_location + 'kde.pdf'
+                figs.figtofile(self.kde, kde_filename)
+                print(
+                    'Saved normalied, stacked KDE plot of distance surface values as PDF.')
+                plt.close()
+
+                if normalization is True:
+                    self.inv_norm_bargraph = figs.bargraph(
+                        self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
+                    inv_norm_bargraph_filename = export_figs_location + 'inv_norm_bargraph.pdf'
+                    figs.figtofile(self.inv_norm_bargraph,
+                                   inv_norm_bargraph_filename)
+                    print("Saved bargraph of fraction of invading cells as PDF.")
+                    plt.close()
 
                 if linreg_analysis is True:
                     self.linregplot = figs.linregplot(
