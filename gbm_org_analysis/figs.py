@@ -278,5 +278,6 @@ def norm_stacked_kde(
     )
     plt.xlabel(x_label)
     plt.ylabel(y_label)
+    sns.despine()
 
     return plt

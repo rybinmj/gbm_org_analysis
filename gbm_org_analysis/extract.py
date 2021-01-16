@@ -257,8 +257,8 @@ class GbmCellData():
                 inv_raw_file, sheet_name='inv_raw_bygroup', index=False)
             self.inv_raw_bygroup_tidy.to_excel(
                 inv_raw_file, sheet_name='inv_raw_bygroup_tidy', index=False)
-            pd.DataFrame([self.inv_thresh]).to_excel(
-                inv_raw_file, sheetname='inv_threshold', index=False)
+            pd.DataFrame([self.inv_thresh], columns=['Threshold']).to_excel(
+                inv_raw_file, sheet_name='inv_threshold', index=False)
             inv_raw_file.save()
 
             # Fraction greater than threshold data
@@ -387,7 +387,7 @@ class GbmCellData():
                 kde_filename = export_figs_location + 'kde.pdf'
                 figs.figtofile(self.kde, kde_filename)
                 print(
-                    'Saved normalied, stacked KDE plot of distance surface values as PDF.')
+                    'Saved normalized, stacked KDE plot of distance surface values as PDF.')
                 plt.close()
 
                 if normalization is True:

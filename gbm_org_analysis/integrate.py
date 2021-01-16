@@ -10,9 +10,9 @@ class GbmCellData():
     def __init__(
         self,
         data_locations=[
-            '*_1/Data_Processed/',
-            '*_2/Data_Processed/',
-            '*_3/Data_Processed/',
+            '../*_1/Data_Processed/',
+            '../*_2/Data_Processed/',
+            '../*_3/Data_Processed/',
         ],
         total_cells_filename='cn.xlsx',
         total_cells_sheetname='cn_bygroup',
@@ -23,12 +23,12 @@ class GbmCellData():
         cell_distance_sheetname='dts_tidy',
         normalization=False,
         export_data=False,
-        export_data_location="Integrated/Data_Processed/",
+        export_data_location="Data_Processed/",
         export_stats=False,
-        export_stats_location="Integrated/Statistics/",
+        export_stats_location="Statistics/",
         figures="",
         figure_colors=None,
-        export_figs_location="Integrated/Figures_Original/",
+        export_figs_location="Figures_Original/",
 
     ):
 
@@ -148,16 +148,19 @@ class GbmCellData():
         # Reorder dts dataframe with correct order
         df = data['dts'].pivot(columns='Org', values='DTS')
         df = df.reindex(columns=new_order)
-        data['dts'] = pd.melt(df).dropna()
+        data['dts'] = pd.melt(df, var_name='Org', value_name='DTS').dropna()
 
         # ===== EXPORTING DATA =====
+        org_ids = data['dts']['Org'].values.tolist()
+        group_ids = [group.split("_")[0] for group in org_ids]
+        self.dts_bygroup_tidy = pd.DataFrame()
+        self.dts_bygroup_tidy['Group'] = group_ids
+        self.dts_bygroup_tidy['DTS'] = data['dts']['DTS'].values.tolist()
 
         if export_data is True:
-            if export_data_location == 'Integrated_Results/Data_Processed/':
-                if 'Integrated_Results' not in os.listdir():
-                    os.mkdir('Integrated_Results')
-                if 'Data_Processed' not in os.listdir('Integrated_Results/'):
-                    os.mkdir('Integrated_Results/Data_Processed')
+            if export_data_location == 'Data_Processed/':
+                if 'Data_Processed' not in os.listdir():
+                    os.mkdir('Data_Processed')
 
             cn_file = pd.ExcelWriter(
                 export_data_location + 'cn.xlsx')
@@ -183,6 +186,8 @@ class GbmCellData():
                 export_data_location + 'dts.xlsx')
             data['dts'].to_excel(
                 dts_file, sheet_name='dts_tidy', index=False)
+            self.dts_bygroup_tidy.to_excel(
+                dts_file, sheet_name='dts_bygroup_tidy', index=False)
             dts_file.save()
 
             print("Integrated GBM cell data exported to excel files.")
@@ -190,17 +195,15 @@ class GbmCellData():
         # ===== EXPORTING STATISTICS =====
 
         if export_stats is True:
-            if export_stats_location == 'Integrated_Results/Statistics/':
-                if 'Integrated_Results' not in os.listdir():
-                    os.mkdir('Integrated_Results')
-                if 'Statistics' not in os.listdir('Integrated_Results/'):
-                    os.mkdir('Integrated_Results/Statistics')
+            if export_stats_location == 'Statistics/':
+                if 'Statistics' not in os.listdir():
+                    os.mkdir('Statistics')
 
             for key, values in data.items():
                 if key == 'dts':
                     continue
                 if normalization is False:
-                    if key == 'cn_norm' or 'inv_norm':
+                    if key == 'cn_norm' or key == 'inv_norm':
                         continue
                 anova_text = stats.anova_results_as_text(values)
                 filename = export_stats_location + f'{key}_anova.txt'
@@ -215,15 +218,10 @@ class GbmCellData():
             else:
                 colors = figure_colors
 
-            groups = data['dts']['Group'].values.tolist()
-            groups_only = [group.split("_")[0] for group in groups]
-            dts_bygroup_tidy = data['dts'].copy()
-            dts_bygroup_tidy['Group'] = groups_only
-
             if figures == 'show':
                 for key, value in data.items():
                     if normalization is False:
-                        if key == 'cn_norm' or 'inv_norm':
+                        if key == 'cn_norm' or key == 'inv_norm':
                             continue
                     if key == 'dts':
                         figs.boxplot(value, group_colors=colors)
@@ -236,18 +234,17 @@ class GbmCellData():
                             y_label = 'Invaded Cells \n (as fraction of total)'
                         figs.bargraph(value, group_colors=colors,
                                       y_label=y_label)
-                figs.norm_stacked_kde(dts_bygroup_tidy, group_colors=colors)
+                figs.norm_stacked_kde(
+                    self.dts_bygroup_tidy, group_colors=colors)
 
             if figures == 'save':
-                if export_figs_location == 'Integrated_Results/Figures_Original/':
-                    if 'Integrated_Results' not in os.listdir():
-                        os.mkdir('Integrated_Results')
-                    if 'Figures_Original' not in os.listdir('Integrated_Results/'):
-                        os.mkdir('Integrated_Results/Figures_Original')
+                if export_figs_location == 'Figures_Original/':
+                    if 'Figures_Original' not in os.listdir():
+                        os.mkdir('Figures_Original')
 
                 for key, value in data.items():
                     if normalization is False:
-                        if key == 'cn_norm' or 'inv_norm':
+                        if key == 'cn_norm' or key == 'inv_norm':
                             continue
                     if key == 'dts':
                         dts_boxplot = figs.boxplot(value, group_colors=colors)
@@ -266,9 +263,9 @@ class GbmCellData():
                         figs.figtofile(plot, filename)
 
                 kde = figs.norm_stacked_kde(
-                    dts_bygroup_tidy, group_colors=colors)
+                    self.dts_bygroup_tidy, group_colors=colors)
                 kde_filename = export_figs_location + 'kde.pdf'
-                figs.figstofile(kde, kde_filename)
+                figs.figtofile(kde, kde_filename)
                 print('Saved GBM cell figures as PDFs.')
         else:
             if figures is not None:
@@ -283,9 +280,9 @@ class OrganoidData():
     def __init__(
         self,
         data_locations=[
-            '*_1/Data_Processed/',
-            '*_2/Data_Processed/',
-            '*_3/Data_Processed/',
+            '../*_1/Data_Processed/',
+            '../*_2/Data_Processed/',
+            '../*_3/Data_Processed/',
         ],
         surf_area_filename='sa.xlsx',
         surf_area_sheetname='sa_bygroup',
@@ -293,12 +290,12 @@ class OrganoidData():
         volume_sheetname='vol_bygroup',
         normalization=False,
         export_data=False,
-        export_data_location="Integrated_Results/Data_Processed/",
+        export_data_location="Data_Processed/",
         export_stats=False,
-        export_stats_location="Integrated_Results/Statistics/",
+        export_stats_location="Statistics/",
         figures="",
         figure_colors=None,
-        export_figs_location="Integrated_Results/Figures_Original/",
+        export_figs_location="Figures_Original/",
 
     ):
 
@@ -343,11 +340,9 @@ class OrganoidData():
         # ===== EXPORTING DATA =====
 
         if export_data is True:
-            if export_data_location == 'Integrated_Results/Data_Processed/':
-                if 'Integrated_Results' not in os.listdir():
-                    os.mkdir('Integrated_Results')
-                if 'Data_Processed' not in os.listdir('Integrated_Results/'):
-                    os.mkdir('Integrated_Results/Data_Processed')
+            if export_data_location == 'Data_Processed/':
+                if 'Data_Processed' not in os.listdir():
+                    os.mkdir('Data_Processed')
 
             sa_file = pd.ExcelWriter(
                 export_data_location + 'sa.xlsx')
@@ -372,15 +367,13 @@ class OrganoidData():
         # ===== EXPORTING STATISTICS =====
 
         if export_stats is True:
-            if export_stats_location == 'Integrated_Results/Statistics/':
-                if 'Integrated_Results' not in os.listdir():
-                    os.mkdir('Integrated_Results')
-                if 'Statistics' not in os.listdir('Integrated_Results/'):
-                    os.mkdir('Integrated_Results/Statistics')
+            if export_stats_location == 'Statistics/':
+                if 'Statistics' not in os.listdir():
+                    os.mkdir('Statistics')
 
             for key, values in data.items():
                 if normalization is False:
-                    if key == 'sa_norm' or 'vol_norm':
+                    if key == 'sa_norm' or key == 'vol_norm':
                         continue
                 anova_text = stats.anova_results_as_text(values)
                 filename = export_stats_location + f'{key}_anova.txt'
@@ -399,7 +392,7 @@ class OrganoidData():
             if figures == 'show':
                 for key, value in data.items():
                     if normalization is False:
-                        if key == 'sa_norm' or 'vol_norm':
+                        if key == 'sa_norm' or key == 'vol_norm':
                             continue
                     if key.startswith('sa'):
                         y_label = 'Surface Area'
@@ -409,15 +402,13 @@ class OrganoidData():
                                   y_label=y_label)
 
             if figures == 'save':
-                if export_figs_location == 'Integrated_Results/Figures_Original/':
-                    if 'Integrated_Results' not in os.listdir():
-                        os.mkdir('Integrated_Results')
-                    if 'Figures_Original' not in os.listdir('Integrated_Results/'):
-                        os.mkdir('Integrated_Results/Figures_Original')
+                if export_figs_location == 'Figures_Original/':
+                    if 'Figures_Original' not in os.listdir():
+                        os.mkdir('Figures_Original')
 
                 for key, value in data.items():
                     if normalization is False:
-                        if key == 'sa_norm' or 'vol_norm':
+                        if key == 'sa_norm' or key == 'vol_norm':
                             continue
                     if key.startswith('sa'):
                         y_label = 'Surface Area'
@@ -427,6 +418,7 @@ class OrganoidData():
                         value, group_colors=colors, y_label=y_label)
                     filename = export_figs_location + f'{key}_bargraph.pdf'
                     figs.figtofile(plot, filename)
+
                 print('Saved organoid figures as PDFs.')
         else:
             if figures is not None:
