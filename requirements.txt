@@ -5,3 +5,7 @@ seaborn
 scipy
 statsmodels
 openpyxl
+pytest
+flake8
+mypy
+black

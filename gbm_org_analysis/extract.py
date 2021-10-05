@@ -13,7 +13,10 @@ def match_files_with_org_id(path, separator, groups_dict):
     name_pairs = []
     for fullname in glob.glob(path):
         name_pair = (fullname, fullname.split(separator))
-        if any(portion_of_filename in name_pair[1] for portion_of_filename in list(groups_dict.keys())):
+        if any(
+            portion_of_filename in name_pair[1]
+            for portion_of_filename in list(groups_dict.keys())
+        ):
             name_pairs.append(name_pair)
 
     files_with_org_ids = {}
@@ -45,13 +48,11 @@ def comb_df_by_group(df, group_names):
         combined_values = []
         for col in keep_cols:
             combined_values.append(df[col].values.tolist())
-        collapsed_list = [
-            item for sublist in combined_values for item in sublist]
+        collapsed_list = [item for sublist in combined_values for item in sublist]
         if group not in all_dict:
             all_dict[group] = collapsed_list
 
-    df_comb = pd.DataFrame(
-        dict([(k, pd.Series(v))for k, v in all_dict.items()]))
+    df_comb = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in all_dict.items()]))
 
     return df_comb
 
@@ -72,15 +73,15 @@ def mk_comb_and_tidy_dfs(df, tidycol2name):
     groups = list(dict.fromkeys([col[:-5] for col in df.columns]))
 
     df_bygroup = comb_df_by_group(df, groups)
-    df_tidy = pd.melt(
-        df, var_name='Org', value_name=tidycol2name).dropna()
+    df_tidy = pd.melt(df, var_name="Org", value_name=tidycol2name).dropna()
     df_bygroup_tidy = pd.melt(
-        df_bygroup, var_name='Group', value_name=tidycol2name).dropna()
+        df_bygroup, var_name="Group", value_name=tidycol2name
+    ).dropna()
 
     return df_bygroup, df_tidy, df_bygroup_tidy
 
 
-class GbmCellData():
+class GbmCellData:
     """
     Extracts values from Imaris data corresponding to
     the distance of individual gbm cells to surface of the organoid
@@ -91,7 +92,7 @@ class GbmCellData():
         self,
         groups,
         file_location="Data_Raw/*/*_org?_Shortest_Distance_to_Surfaces_Surfaces*.csv",
-        invasion_threshold_details=[0.75, 'DMSO'],
+        invasion_threshold_details=[0.75, "DMSO"],
         normalization=False,
         linreg_analysis=False,
         export_data=False,
@@ -183,12 +184,14 @@ class GbmCellData():
 
         # Extracting distance to surface data into a dfs
         self.filenames_dict = match_files_with_org_id(
-            file_location, self.separator, self.groups_dict)
+            file_location, self.separator, self.groups_dict
+        )
         self.dts = self.extract_dts_data(self.filenames_dict)
 
         # Making bygroup and tidyform dfs
-        self.dts_bygroup, self.dts_tidy, self.dts_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.dts, 'DTS')
+        self.dts_bygroup, self.dts_tidy, self.dts_bygroup_tidy = mk_comb_and_tidy_dfs(
+            self.dts, "DTS"
+        )
 
         # ===== DATAFRAMES OF TOTAL NUMBER OF CELLS DATA =====
 
@@ -196,8 +199,9 @@ class GbmCellData():
         for col in self.dts.columns.tolist():
             self.cn[col] = [self.dts[col].count()]
 
-        self.cn_bygroup, self.cn_tidy, self.cn_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.cn, 'NumOfCells')
+        self.cn_bygroup, self.cn_tidy, self.cn_bygroup_tidy = mk_comb_and_tidy_dfs(
+            self.cn, "NumOfCells"
+        )
 
         # ===== DATAFRAMES OF NUMBER OF CELLS GREATER THAN INVASION THRESHOLD DATA =====
 
@@ -205,74 +209,82 @@ class GbmCellData():
         self.inv_thresh = self.get_invasion_threshold(self.dts)
 
         # Creating df of the number of cells whose dts values exceed invasion threshold
-        self.inv_raw = count_values_above_threshold(
-            self.dts, self.inv_thresh)
+        self.inv_raw = count_values_above_threshold(self.dts, self.inv_thresh)
 
         # Normalizing number of invaded cells to the total number of gbm cells per organoid for fraction invaded
         self.inv_norm = self.inv_raw / self.cn
 
         # Making bygroup and tidyform dfs
-        self.inv_raw_bygroup, self.inv_raw_tidy, self.inv_raw_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.inv_raw, 'NumOfInvadedCells')
-        self.inv_norm_bygroup, self.inv_norm_tidy, self.inv_norm_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.inv_norm, 'FractOfInvadedCells')
+        (
+            self.inv_raw_bygroup,
+            self.inv_raw_tidy,
+            self.inv_raw_bygroup_tidy,
+        ) = mk_comb_and_tidy_dfs(self.inv_raw, "NumOfInvadedCells")
+        (
+            self.inv_norm_bygroup,
+            self.inv_norm_tidy,
+            self.inv_norm_bygroup_tidy,
+        ) = mk_comb_and_tidy_dfs(self.inv_norm, "FractOfInvadedCells")
 
         # ===== EXPORT DTS, CN, AND INV DATA TO EXCEL FILES =====
 
         if export_data is True:
-            if export_data_location == 'Data_Processed/':
-                if 'Data_Processed' not in os.listdir():
-                    os.mkdir('Data_Processed')
+            if export_data_location == "Data_Processed/":
+                if "Data_Processed" not in os.listdir():
+                    os.mkdir("Data_Processed")
 
             # Distance to surface data
-            dts_file = pd.ExcelWriter(export_data_location + 'dts.xlsx')
-            self.dts.to_excel(dts_file, sheet_name='dts', index=False)
-            self.dts_tidy.to_excel(
-                dts_file, sheet_name='dts_tidy', index=False)
-            self.dts_bygroup.to_excel(
-                dts_file, sheet_name='dts_bygroup', index=False)
+            dts_file = pd.ExcelWriter(export_data_location + "dts.xlsx")
+            self.dts.to_excel(dts_file, sheet_name="dts", index=False)
+            self.dts_tidy.to_excel(dts_file, sheet_name="dts_tidy", index=False)
+            self.dts_bygroup.to_excel(dts_file, sheet_name="dts_bygroup", index=False)
             self.dts_bygroup_tidy.to_excel(
-                dts_file, sheet_name='dts_bygroup_tidy', index=False)
+                dts_file, sheet_name="dts_bygroup_tidy", index=False
+            )
             dts_file.save()
 
             # Total cell number data
-            cn_file = pd.ExcelWriter(export_data_location + 'cn.xlsx')
-            self.cn.to_excel(cn_file, sheet_name='cn', index=False)
-            self.cn_tidy.to_excel(
-                cn_file, sheet_name='cn_tidy', index=False)
-            self.cn_bygroup.to_excel(
-                cn_file, sheet_name='cn_bygroup', index=False)
+            cn_file = pd.ExcelWriter(export_data_location + "cn.xlsx")
+            self.cn.to_excel(cn_file, sheet_name="cn", index=False)
+            self.cn_tidy.to_excel(cn_file, sheet_name="cn_tidy", index=False)
+            self.cn_bygroup.to_excel(cn_file, sheet_name="cn_bygroup", index=False)
             self.cn_bygroup_tidy.to_excel(
-                cn_file, sheet_name='cn_bygroup_tidy', index=False)
+                cn_file, sheet_name="cn_bygroup_tidy", index=False
+            )
             cn_file.save()
 
             # Number greater than threshold data
-            inv_raw_file = pd.ExcelWriter(
-                export_data_location + 'inv_raw.xlsx')
-            self.inv_raw.to_excel(
-                inv_raw_file, sheet_name='inv_raw', index=False)
+            inv_raw_file = pd.ExcelWriter(export_data_location + "inv_raw.xlsx")
+            self.inv_raw.to_excel(inv_raw_file, sheet_name="inv_raw", index=False)
             self.inv_raw_tidy.to_excel(
-                inv_raw_file, sheet_name='inv_raw_tidy', index=False)
+                inv_raw_file, sheet_name="inv_raw_tidy", index=False
+            )
             self.inv_raw_bygroup.to_excel(
-                inv_raw_file, sheet_name='inv_raw_bygroup', index=False)
+                inv_raw_file, sheet_name="inv_raw_bygroup", index=False
+            )
             self.inv_raw_bygroup_tidy.to_excel(
-                inv_raw_file, sheet_name='inv_raw_bygroup_tidy', index=False)
-            pd.DataFrame([self.inv_thresh], columns=['Threshold']).to_excel(
-                inv_raw_file, sheet_name='inv_threshold', index=False)
+                inv_raw_file, sheet_name="inv_raw_bygroup_tidy", index=False
+            )
+            pd.DataFrame([self.inv_thresh], columns=["Threshold"]).to_excel(
+                inv_raw_file, sheet_name="inv_threshold", index=False
+            )
             inv_raw_file.save()
 
             # Fraction greater than threshold data
             if normalization is True:
-                inv_norm_file = pd.ExcelWriter(
-                    export_data_location + 'inv_norm.xlsx')
+                inv_norm_file = pd.ExcelWriter(export_data_location + "inv_norm.xlsx")
                 self.inv_norm.to_excel(
-                    inv_norm_file, sheet_name='inv_norm', index=False)
+                    inv_norm_file, sheet_name="inv_norm", index=False
+                )
                 self.inv_norm_tidy.to_excel(
-                    inv_norm_file, sheet_name='inv_norm_tidy', index=False)
+                    inv_norm_file, sheet_name="inv_norm_tidy", index=False
+                )
                 self.inv_norm_bygroup.to_excel(
-                    inv_norm_file, sheet_name='inv_norm_bygroup', index=False)
+                    inv_norm_file, sheet_name="inv_norm_bygroup", index=False
+                )
                 self.inv_norm_bygroup_tidy.to_excel(
-                    inv_norm_file, sheet_name='inv_norm_bygroup_tidy', index=False)
+                    inv_norm_file, sheet_name="inv_norm_bygroup_tidy", index=False
+                )
                 inv_norm_file.save()
 
             print("Exported GBM cell data to excel files.")
@@ -280,57 +292,64 @@ class GbmCellData():
         # ===== STATISTICS =====
 
         # Total number of cells anova
-        self.cn_anova_fvalue, self.cn_anova_pvalue, self.cn_anova_tky = \
-            stats.anova(self.cn_bygroup)
+        self.cn_anova_fvalue, self.cn_anova_pvalue, self.cn_anova_tky = stats.anova(
+            self.cn_bygroup
+        )
 
         # Raw number greater than threshold anova
-        self.inv_raw_anova_fvalue, self.inv_raw_anova_pvalue, self.inv_raw_anova_tky = \
-            stats.anova(self.inv_raw_bygroup)
+        (
+            self.inv_raw_anova_fvalue,
+            self.inv_raw_anova_pvalue,
+            self.inv_raw_anova_tky,
+        ) = stats.anova(self.inv_raw_bygroup)
 
         # Fraction number greater than threshold anova
-        self.inv_norm_anova_fvalue, self.inv_norm_anova_pvalue, self.inv_norm_anova_tky = \
-            stats.anova(self.inv_norm_bygroup)
+        (
+            self.inv_norm_anova_fvalue,
+            self.inv_norm_anova_pvalue,
+            self.inv_norm_anova_tky,
+        ) = stats.anova(self.inv_norm_bygroup)
 
         # Total number vs. number great linear regression
         if linreg_analysis is True:
             self.cn_inv_linreg = stats.linreg(
-                self.inv_bygroup_tidy['NumGreatThanThresh'], self.cn_bygroup_tidy['NumOfCells'])
+                self.inv_bygroup_tidy["NumGreatThanThresh"],
+                self.cn_bygroup_tidy["NumOfCells"],
+            )
 
         # Saving results from statistics to text files
         if export_stats is True:
             # Creating directory to store exported files
-            if export_stats_location == 'Statistics/':
-                if 'Statistics' not in os.listdir():
-                    os.mkdir('Statistics')
+            if export_stats_location == "Statistics/":
+                if "Statistics" not in os.listdir():
+                    os.mkdir("Statistics")
 
             # Total number of cells anova
             cn_anova_text = stats.anova_results_as_text(self.cn_bygroup)
-            cn_anova_filename = export_stats_location + 'cn_anova.txt'
+            cn_anova_filename = export_stats_location + "cn_anova.txt"
             stats.save_to_txt(cn_anova_filename, cn_anova_text)
 
             # Number greater than threshold anova
-            inv_raw_anova_text = stats.anova_results_as_text(
-                self.inv_raw_bygroup)
-            inv_raw_anova_filename = export_stats_location + 'inv_raw_anova.txt'
+            inv_raw_anova_text = stats.anova_results_as_text(self.inv_raw_bygroup)
+            inv_raw_anova_filename = export_stats_location + "inv_raw_anova.txt"
             stats.save_to_txt(inv_raw_anova_filename, inv_raw_anova_text)
 
             # Fraction greater than threshold anova
             if normalization is True:
-                inv_norm_anova_text = stats.anova_results_as_text(
-                    self.inv_norm_bygroup)
-                inv_norm_anova_filename = export_stats_location + 'inv_norm_anova.txt'
+                inv_norm_anova_text = stats.anova_results_as_text(self.inv_norm_bygroup)
+                inv_norm_anova_filename = export_stats_location + "inv_norm_anova.txt"
                 stats.save_to_txt(inv_norm_anova_filename, inv_norm_anova_text)
 
             # Linear regression
             if linreg_analysis is True:
-                linreg_filename = export_stats_location + 'linreg.txt'
+                linreg_filename = export_stats_location + "linreg.txt"
                 stats.save_to_txt(linreg_filename, str(self.cn_inv_linreg))
 
             print("Saved GBM cell statistical test results as text files.")
 
         # ===== FIGURES =====
 
-        if figures in ['show', 'save']:
+        if figures in ["show", "save"]:
 
             # Figure colors
             if figure_colors is None:
@@ -339,70 +358,83 @@ class GbmCellData():
                 colors = figure_colors
 
             # Displaying figures
-            if figures == 'show':
+            if figures == "show":
                 figs.bargraph(self.cn_bygroup, group_colors=colors)
                 figs.bargraph(
-                    self.inv_raw_bygroup, group_colors=colors, y_label='Number of Invaded Cells')
+                    self.inv_raw_bygroup,
+                    group_colors=colors,
+                    y_label="Number of Invaded Cells",
+                )
                 figs.boxplot(self.dts_tidy, group_colors=colors)
-                figs.norm_stacked_kde(
-                    self.dts_bygroup_tidy, group_colors=colors)
+                figs.norm_stacked_kde(self.dts_bygroup_tidy, group_colors=colors)
                 if normalization is True:
                     figs.bargraph(
-                        self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
+                        self.inv_norm_bygroup,
+                        group_colors=colors,
+                        y_label="Invaded Cells \n (as fraction of total)",
+                    )
                 if linreg_analysis is True:
-                    figs.linregplot(self.inv_tidy, self.cn_tidy,
-                                    group_colors=colors)
+                    figs.linregplot(self.inv_tidy, self.cn_tidy, group_colors=colors)
 
             # Saving figures
-            if figures == 'save':
+            if figures == "save":
                 # Creating directory to store exported figures
-                if export_figs_location == 'Figures_Original/':
-                    if 'Figures_Original' not in os.listdir():
-                        os.mkdir('Figures_Original')
+                if export_figs_location == "Figures_Original/":
+                    if "Figures_Original" not in os.listdir():
+                        os.mkdir("Figures_Original")
 
-                self.cn_bargraph = figs.bargraph(
-                    self.cn_bygroup, group_colors=colors)
-                cn_bargraph_filename = export_figs_location + 'cn_bargraph.pdf'
+                self.cn_bargraph = figs.bargraph(self.cn_bygroup, group_colors=colors)
+                cn_bargraph_filename = export_figs_location + "cn_bargraph.pdf"
                 figs.figtofile(self.cn_bargraph, cn_bargraph_filename)
                 print("Saved bargraph of total number of cells as PDF.")
                 plt.close()
 
                 self.inv_raw_bargraph = figs.bargraph(
-                    self.inv_raw_bygroup, group_colors=colors, y_label='Number of Invaded Cells')
-                inv_raw_bargraph_filename = export_figs_location + 'inv_raw_bargraph.pdf'
-                figs.figtofile(self.inv_raw_bargraph,
-                               inv_raw_bargraph_filename)
+                    self.inv_raw_bygroup,
+                    group_colors=colors,
+                    y_label="Number of Invaded Cells",
+                )
+                inv_raw_bargraph_filename = (
+                    export_figs_location + "inv_raw_bargraph.pdf"
+                )
+                figs.figtofile(self.inv_raw_bargraph, inv_raw_bargraph_filename)
                 print("Saved bargraph of number of invading cells as PDF.")
                 plt.close()
 
-                self.dts_boxplot = figs.boxplot(
-                    self.dts_tidy, group_colors=colors)
-                dts_boxplot_filename = export_figs_location + 'dts_boxplot.pdf'
+                self.dts_boxplot = figs.boxplot(self.dts_tidy, group_colors=colors)
+                dts_boxplot_filename = export_figs_location + "dts_boxplot.pdf"
                 figs.figtofile(self.dts_boxplot, dts_boxplot_filename)
                 print("Saved boxplot of distace to surface values as PDF.")
                 plt.close()
 
                 self.kde = figs.norm_stacked_kde(
-                    self.dts_bygroup_tidy, group_colors=colors)
-                kde_filename = export_figs_location + 'kde.pdf'
+                    self.dts_bygroup_tidy, group_colors=colors
+                )
+                kde_filename = export_figs_location + "kde.pdf"
                 figs.figtofile(self.kde, kde_filename)
                 print(
-                    'Saved normalized, stacked KDE plot of distance surface values as PDF.')
+                    "Saved normalized, stacked KDE plot of distance surface values as PDF."
+                )
                 plt.close()
 
                 if normalization is True:
                     self.inv_norm_bargraph = figs.bargraph(
-                        self.inv_norm_bygroup, group_colors=colors, y_label='Invaded Cells \n (as fraction of total)')
-                    inv_norm_bargraph_filename = export_figs_location + 'inv_norm_bargraph.pdf'
-                    figs.figtofile(self.inv_norm_bargraph,
-                                   inv_norm_bargraph_filename)
+                        self.inv_norm_bygroup,
+                        group_colors=colors,
+                        y_label="Invaded Cells \n (as fraction of total)",
+                    )
+                    inv_norm_bargraph_filename = (
+                        export_figs_location + "inv_norm_bargraph.pdf"
+                    )
+                    figs.figtofile(self.inv_norm_bargraph, inv_norm_bargraph_filename)
                     print("Saved bargraph of fraction of invading cells as PDF.")
                     plt.close()
 
                 if linreg_analysis is True:
                     self.linregplot = figs.linregplot(
-                        self.inv_tidy, self.cn_tidy, group_colors=colors)
-                    linregplot_filename = export_figs_location + 'linregplot.pdf'
+                        self.inv_tidy, self.cn_tidy, group_colors=colors
+                    )
+                    linregplot_filename = export_figs_location + "linregplot.pdf"
                     figs.figtofile(self.linregplot, linregplot_filename)
                     print("Saved linear regression plot as PDF.")
                     plt.close()
@@ -422,8 +454,7 @@ class GbmCellData():
         df = pd.DataFrame()
         for filename, org_id in filenames_dict.items():
             data = pd.read_csv(filename, header=2, usecols=[0])
-            data.rename(
-                columns={data.columns[0]: org_id}, inplace=True)
+            data.rename(columns={data.columns[0]: org_id}, inplace=True)
 
             # Set negative DTS values to NaN
             neg_indexes = data[data[org_id] < 0].index
@@ -439,8 +470,7 @@ class GbmCellData():
         cols = df.columns.tolist()
         columns_order = []
         for group_name in self.ordered_group_names:
-            order = [
-                org_id for org_id in cols if org_id.startswith(group_name)]
+            order = [org_id for org_id in cols if org_id.startswith(group_name)]
             columns_order = columns_order + sorted(order)
         df = df.reindex(columns=(columns_order))
 
@@ -463,7 +493,7 @@ class GbmCellData():
         return invasion_threshold
 
 
-class OrganoidData():
+class OrganoidData:
     """Extract organoid surface area and volume stats from Imaris data"""
 
     def __init__(
@@ -565,18 +595,24 @@ class OrganoidData():
         self.separator = "_"
 
         # ===== FULL VOLUME AND AREA VALUES =====
-        self.fullvol = float(pd.read_csv(
-            fullvol_file_location, header=2, usecols=[0])['Volume'].tolist()[0])
-        self.fullarea = float(pd.read_csv(
-            fullsa_file_location, header=2, usecols=[0])['Area'].tolist()[0])
+        self.fullvol = float(
+            pd.read_csv(fullvol_file_location, header=2, usecols=[0])[
+                "Volume"
+            ].tolist()[0]
+        )
+        self.fullarea = float(
+            pd.read_csv(fullsa_file_location, header=2, usecols=[0])["Area"].tolist()[0]
+        )
 
         # ===== TRUE VOLUME AND SURFACE AREA =====
 
         # Filename dictionaries
         self.vol_files_dict = match_files_with_org_id(
-            vol_file_location, self.separator, self.groups_dict)
+            vol_file_location, self.separator, self.groups_dict
+        )
         self.sa_files_dict = match_files_with_org_id(
-            sa_file_location, self.separator, self.groups_dict)
+            sa_file_location, self.separator, self.groups_dict
+        )
 
         # Extracting volume and surface area data
         self.vol = self.fullvol - self.extract_org_data(self.vol_files_dict)
@@ -587,71 +623,74 @@ class OrganoidData():
             for values in data.values.tolist():
                 if any(value < 0 for value in values):
                     print(
-                        "Note: Negative value(s) found and removed in processed surface area or volume data.")
+                        "Note: Negative value(s) found and removed in processed surface area or volume data."
+                    )
             for col, value in data.items():
                 value = float(value)
                 if value < 0:
                     data.replace(value, np.NaN, inplace=True)
 
         # Making bygroup and tidyform dfs
-        self.vol_bygroup, self.vol_tidy, self.vol_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.vol, 'Volume')
-        self.sa_bygroup, self.sa_tidy, self.sa_bygroup_tidy = \
-            mk_comb_and_tidy_dfs(self.sa, 'SurfArea')
+        self.vol_bygroup, self.vol_tidy, self.vol_bygroup_tidy = mk_comb_and_tidy_dfs(
+            self.vol, "Volume"
+        )
+        self.sa_bygroup, self.sa_tidy, self.sa_bygroup_tidy = mk_comb_and_tidy_dfs(
+            self.sa, "SurfArea"
+        )
 
         # ===== EXPORTING ORG VOL AND SURF AREA DATA TO EXCEL FILES =====
 
         if export_data is True:
-            if export_data_location == 'Data_Processed/':
-                if 'Data_Processed' not in os.listdir():
-                    os.mkdir('Data_Processed')
+            if export_data_location == "Data_Processed/":
+                if "Data_Processed" not in os.listdir():
+                    os.mkdir("Data_Processed")
 
             # Org volume data
-            vol_file = pd.ExcelWriter(export_data_location + 'vol.xlsx')
-            self.vol.to_excel(vol_file, sheet_name='vol', index=False)
-            self.vol_tidy.to_excel(
-                vol_file, sheet_name='vol_tidy', index=False)
-            self.vol_bygroup.to_excel(
-                vol_file, sheet_name='vol_bygroup', index=False)
+            vol_file = pd.ExcelWriter(export_data_location + "vol.xlsx")
+            self.vol.to_excel(vol_file, sheet_name="vol", index=False)
+            self.vol_tidy.to_excel(vol_file, sheet_name="vol_tidy", index=False)
+            self.vol_bygroup.to_excel(vol_file, sheet_name="vol_bygroup", index=False)
             self.vol_bygroup_tidy.to_excel(
-                vol_file, sheet_name='vol_bygroup_tidy', index=False)
+                vol_file, sheet_name="vol_bygroup_tidy", index=False
+            )
             vol_file.save()
 
             # Org surface area data
-            sa_file = pd.ExcelWriter(export_data_location + 'sa.xlsx')
-            self.sa.to_excel(sa_file, sheet_name='sa', index=False)
-            self.sa_tidy.to_excel(
-                sa_file, sheet_name='sa_tidy', index=False)
-            self.sa_bygroup.to_excel(
-                sa_file, sheet_name='sa_bygroup', index=False)
+            sa_file = pd.ExcelWriter(export_data_location + "sa.xlsx")
+            self.sa.to_excel(sa_file, sheet_name="sa", index=False)
+            self.sa_tidy.to_excel(sa_file, sheet_name="sa_tidy", index=False)
+            self.sa_bygroup.to_excel(sa_file, sheet_name="sa_bygroup", index=False)
             self.sa_bygroup_tidy.to_excel(
-                sa_file, sheet_name='sa_bygroup_tidy', index=False)
+                sa_file, sheet_name="sa_bygroup_tidy", index=False
+            )
             sa_file.save()
             print("Exported organoid volume and surface area data to excel files.")
 
         # ===== STATISTICS =====
 
         # Org vol and surf area anovas
-        self.vol_anova_fvalue, self.vol_anova_pvalue, self.vol_anova_tky = \
-            stats.anova(self.vol_bygroup)
-        self.sa_anova_fvalue, self.sa_anova_pvalue, self.sa_anova_tky = \
-            stats.anova(self.sa_bygroup)
+        self.vol_anova_fvalue, self.vol_anova_pvalue, self.vol_anova_tky = stats.anova(
+            self.vol_bygroup
+        )
+        self.sa_anova_fvalue, self.sa_anova_pvalue, self.sa_anova_tky = stats.anova(
+            self.sa_bygroup
+        )
 
         # Saving anova results to text file
         if export_stats is True:
             vol_anova_text = stats.anova_results_as_text(self.vol_bygroup)
-            vol_anova_filename = export_stats_location + 'vol_anova.txt'
+            vol_anova_filename = export_stats_location + "vol_anova.txt"
             stats.save_to_txt(vol_anova_filename, vol_anova_text)
 
             sa_anova_text = stats.anova_results_as_text(self.sa_bygroup)
-            sa_anova_filename = export_stats_location + 'sa_anova.txt'
+            sa_anova_filename = export_stats_location + "sa_anova.txt"
             stats.save_to_txt(sa_anova_filename, sa_anova_text)
 
             print("Saved organoid vol and surf area anova tests as text files.")
 
         # ===== FIGURES =====
 
-        if figures in ['show', 'save']:
+        if figures in ["show", "save"]:
             # Figure colors
             if figure_colors is None:
                 colors = None
@@ -659,29 +698,31 @@ class OrganoidData():
                 colors = figure_colors
 
             # Displaying figures
-            if figures == 'show':
-                figs.bargraph(self.vol_bygroup,
-                              group_colors=colors, y_label='Volume')
-                figs.bargraph(self.sa_bygroup, group_colors=colors,
-                              y_label="Surface Area")
+            if figures == "show":
+                figs.bargraph(self.vol_bygroup, group_colors=colors, y_label="Volume")
+                figs.bargraph(
+                    self.sa_bygroup, group_colors=colors, y_label="Surface Area"
+                )
 
             # Saving figures
-            if figures == 'save':
+            if figures == "save":
                 # Creating directory to store exported figures
-                if export_figs_location == 'Figures_Original/':
-                    if 'Figures_Original' not in os.listdir():
-                        os.mkdir('Figures_Original')
+                if export_figs_location == "Figures_Original/":
+                    if "Figures_Original" not in os.listdir():
+                        os.mkdir("Figures_Original")
 
                 self.vol_bargraph = figs.bargraph(
-                    self.vol_bygroup, group_colors=colors, y_label='Volume')
-                vol_bargraph_filename = export_figs_location + 'vol_bargraph.pdf'
+                    self.vol_bygroup, group_colors=colors, y_label="Volume"
+                )
+                vol_bargraph_filename = export_figs_location + "vol_bargraph.pdf"
                 figs.figtofile(self.vol_bargraph, vol_bargraph_filename)
                 print("Saved bargraph of organoid volume as PDF.")
                 plt.close()
 
                 self.sa_bargraph = figs.bargraph(
-                    self.sa_bygroup, group_colors=colors, y_label='Surface Area')
-                sa_bargraph_filename = export_figs_location + 'sa_bargraph.pdf'
+                    self.sa_bygroup, group_colors=colors, y_label="Surface Area"
+                )
+                sa_bargraph_filename = export_figs_location + "sa_bargraph.pdf"
                 figs.figtofile(self.sa_bargraph, sa_bargraph_filename)
                 print("Saved bargraph of organoid surface area as PDF.")
                 plt.close()
@@ -701,8 +742,7 @@ class OrganoidData():
         df = pd.DataFrame()
         for filename, org_id in filenames_dict.items():
             data = pd.read_csv(filename, header=2, usecols=[0])
-            data.rename(
-                columns={data.columns[0]: org_id}, inplace=True)
+            data.rename(columns={data.columns[0]: org_id}, inplace=True)
 
             # Removing smaller objects which may have been
             # captured during Imaris rendering.
@@ -715,8 +755,7 @@ class OrganoidData():
         cols = df.columns.tolist()
         columns_order = []
         for group_name in self.ordered_group_names:
-            order = [
-                org_id for org_id in cols if org_id.startswith(group_name)]
+            order = [org_id for org_id in cols if org_id.startswith(group_name)]
             columns_order = columns_order + sorted(order)
         df = df.reindex(columns=(columns_order))
 

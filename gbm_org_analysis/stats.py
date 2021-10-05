@@ -11,7 +11,7 @@ def save_to_txt(filename, text):
     else:
         full_filename = filename + ".txt"
 
-    file = open(full_filename, 'w')
+    file = open(full_filename, "w")
     file.write(text)
     file.close
 
@@ -23,7 +23,8 @@ def anova(df):
     values_list_without_nan = []
     for values in values_list:
         values_list_without_nan.append(
-            [value for value in values if str(value) != 'nan'])
+            [value for value in values if str(value) != "nan"]
+        )
 
     fvalue, pvalue = stats.f_oneway(*values_list_without_nan)
 
