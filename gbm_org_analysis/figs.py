@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def figtofile(fig, filename, filetype='.pdf'):
+def figtofile(fig, filename, filetype=".pdf"):
     """Saves figures as file."""
     if filename[-4:] == ".pdf":
         full_filename = filename
@@ -12,7 +12,7 @@ def figtofile(fig, filename, filetype='.pdf'):
     fig.savefig(full_filename)
 
 
-class FigureColors():
+class FigureColors:
     """Color palettes and groups of colors for figures."""
 
     # Colors for figures
@@ -83,12 +83,12 @@ def bargraph(
     """
 
     rc = {
-        'font.size': 20.0,
-        'axes.labelsize': 30.0,
-        'axes.titlesize': 'large',
-        'xtick.labelsize': 20.0,
-        'ytick.labelsize': 20.0,
-        'legend.fontsize': 'medium'
+        "font.size": 20.0,
+        "axes.labelsize": 30.0,
+        "axes.titlesize": "large",
+        "xtick.labelsize": 20.0,
+        "ytick.labelsize": 20.0,
+        "legend.fontsize": "medium",
     }
 
     plt.figure(figsize=size)
@@ -151,12 +151,12 @@ def boxplot(
     """
 
     rc_for_scatter = {
-        'font.size': 20.0,
-        'axes.labelsize': 30.0,
-        'axes.titlesize': 'large',
-        'xtick.labelsize': 15.0,
-        'ytick.labelsize': 15.0,
-        'legend.fontsize': 'medium'
+        "font.size": 20.0,
+        "axes.labelsize": 30.0,
+        "axes.titlesize": "large",
+        "xtick.labelsize": 15.0,
+        "ytick.labelsize": 15.0,
+        "legend.fontsize": "medium",
     }
 
     fig_style = {
@@ -196,10 +196,7 @@ def boxplot(
     plot.set_xlabel(x_label)
     plot.set_ylabel(y_label)
     #         plot.set_title(t, fontsize=30)
-    sns.set_context(
-        font_scale=1.75,
-        rc=fig_style
-    )
+    sns.set_context(font_scale=1.75, rc=fig_style)
 
     plt.tight_layout()
     sns.despine()
@@ -218,8 +215,8 @@ def linregplot(
     df2,  # Designed to take cn_tidy
     group_colors=None,
     size=[6, 6],
-    x_label='Total Cells',
-    y_label='Invaded Cells',
+    x_label="Total Cells",
+    y_label="Invaded Cells",
 ):
     """Plots linear regression"""
 
@@ -238,8 +235,8 @@ def linregplot(
         y="NumOfInvadedCells",
         data=combined_df,
         truncate=False,
-        scatter_kws={'color': colors, 's': 75, 'edgecolor': "black"},
-        line_kws={'color': 'black'}
+        scatter_kws={"color": colors, "s": 75, "edgecolor": "black"},
+        line_kws={"color": "black"},
     )
 
     plot.set_xlabel(x_label)
@@ -266,13 +263,13 @@ def norm_stacked_kde(
         colors = get_colors_for_tidy(df, group_colors)
 
     plt.figure(figsize=size)
-    plt.rcParams.update({'font.size': 20})
+    plt.rcParams.update({"font.size": 20})
     sns.kdeplot(
         data=df,
         x=df.columns[1],  # 'DTS'
         hue=df.columns[0],  # 'Group'
         palette=colors,
-        multiple='fill',
+        multiple="fill",
         common_norm=False,
         legend=False,
     )
